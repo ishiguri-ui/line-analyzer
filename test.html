@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LINE返信AIアドバイザー｜あの人への返し方、教えます</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; background: #f7f3ff; color: #1a1a1a; min-height: 100vh; padding: 24px 16px 48px; }
+    .container { max-width: 480px; margin: 0 auto; }
+    .hero { text-align: center; margin-bottom: 24px; }
+    .hero-emoji { font-size: 44px; margin-bottom: 8px; }
+    .hero h1 { font-size: 20px; font-weight: 700; margin-bottom: 6px; color: #5b21b6; }
+    .hero p { font-size: 13px; color: #888; line-height: 1.6; }
+    .card { background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 14px; box-shadow: 0 2px 12px rgba(91,33,182,0.07); }
+    .field-label { font-size: 13px; color: #666; margin-bottom: 8px; display: block; font-weight: 500; }
+    .gender-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .gender-btn { padding: 12px; font-size: 14px; text-align: center; border: 1.5px solid #e5e5e5; border-radius: 10px; cursor: pointer; background: #fff; color: #555; transition: all 0.15s; }
+    .gender-btn.active { border-color: #7c3aed; background: #f5f3ff; color: #5b21b6; font-weight: 600; }
+    .gender-emoji { display: block; font-size: 24px; margin-bottom: 4px; }
+    .rel-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .rel-item { padding: 11px 14px; font-size: 14px; border: 1.5px solid #e5e5e5; border-radius: 10px; cursor: pointer; background: #fff; color: #555; transition: all 0.15s; display: flex; align-items: center; gap: 10px; }
+    .rel-item.active { border-color: #7c3aed; background: #f5f3ff; color: #5b21b6; font-weight: 600; }
+    .rel-item-emoji { font-size: 18px; }
+    .upload-area { border: 2px dashed #c4b5fd; border-radius: 12px; padding: 24px 16px; text-align: center; cursor: pointer; transition: background 0.15s; margin-bottom: 14px; }
+    .upload-area:hover { background: #f5f3ff; }
+    .upload-area.has-image { border-color: #7c3aed; background: #f5f3ff; }
+    .upload-icon { font-size: 32px; margin-bottom: 6px; }
+    .upload-text { font-size: 13px; color: #888; }
+    .upload-text strong { color: #7c3aed; }
+    #preview { max-width: 100%; border-radius: 8px; margin-top: 10px; display: none; }
+    textarea { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical; min-height: 64px; outline: none; transition: border 0.15s; }
+    textarea:focus { border-color: #7c3aed; }
+    .btn { width: 100%; padding: 14px; font-size: 15px; font-weight: 700; background: #7c3aed; color: #fff; border: none; border-radius: 12px; cursor: pointer; margin-top: 4px; transition: opacity 0.15s; }
+    .btn:hover { opacity: 0.88; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .status { text-align: center; font-size: 13px; color: #7c3aed; margin-top: 10px; min-height: 18px; }
+    .result { display: none; }
+    .meters { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .meter-card { background: #f5f3ff; border-radius: 12px; padding: 14px; text-align: center; }
+    .meter-label { font-size: 11px; color: #7c3aed; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.05em; }
+    .meter-ring { position: relative; width: 80px; height: 80px; margin: 0 auto 8px; }
+    .meter-ring svg { transform: rotate(-90deg); }
+    .meter-num { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 22px; font-weight: 700; color: #5b21b6; }
+    .meter-tag { font-size: 12px; font-weight: 600; color: #5b21b6; }
+    .summary-wrap { text-align: center; margin-bottom: 16px; font-size: 13px; color: #888; }
+    .section-label { font-size: 11px; font-weight: 600; color: #a78bfa; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .section-text { font-size: 14px; line-height: 1.8; color: #333; }
+    .paid-section { margin-top: 20px; position: relative; }
+    .paid-blur { filter: blur(5px); pointer-events: none; user-select: none; }
+    .reply-item { background: #f5f3ff; border-radius: 10px; padding: 12px; margin-bottom: 8px; }
+    .reply-title { font-size: 11px; color: #7c3aed; font-weight: 600; margin-bottom: 6px; }
+    .reply-body { font-size: 14px; line-height: 1.7; color: #333; }
+    .paid-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.78); border-radius: 12px; }
+    .paid-overlay p { font-size: 14px; font-weight: 600; color: #5b21b6; margin-bottom: 12px; text-align: center; line-height: 1.6; }
+    .paid-btn { padding: 11px 28px; font-size: 14px; font-weight: 700; background: #7c3aed; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+    .retry-btn { width: 100%; padding: 11px; font-size: 14px; font-weight: 600; background: #fff; color: #7c3aed; border: 1.5px solid #c4b5fd; border-radius: 10px; cursor: pointer; margin-top: 12px; }
+    input[type="file"] { display: none; }
+    .divider { border: none; border-top: 1px solid #f0eafe; margin: 14px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <div class="hero-emoji">💬</div>
+      <h1>LINE返信AIアドバイザー</h1>
+      <p>スクショを送るだけ。<br>相手の気持ちと最適な返し方を教えます。</p>
+    </div>
+
+    <div class="card" id="formArea">
+
+      <span class="field-label">相手の性別</span>
+      <div class="gender-grid">
+        <div class="gender-btn active" data-gender="female" onclick="selectGender(this)">
+          <span class="gender-emoji">👩</span>女性
+        </div>
+        <div class="gender-btn" data-gender="male" onclick="selectGender(this)">
+          <span class="gender-emoji">👨</span>男性
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <span class="field-label">相手との関係</span>
+      <div class="rel-list">
+        <div class="rel-item active" data-rel="friend" onclick="selectRel(this)"><span class="rel-item-emoji">👫</span>友達</div>
+        <div class="rel-item" data-rel="crush" onclick="selectRel(this)"><span class="rel-item-emoji">💘</span>恋愛関係（付き合う前）</div>
+        <div class="rel-item" data-rel="lover" onclick="selectRel(this)"><span class="rel-item-emoji">💑</span>恋愛関係（恋人）</div>
+        <div class="rel-item" data-rel="couple" onclick="selectRel(this)"><span class="rel-item-emoji">💍</span>家族（夫婦）</div>
+        <div class="rel-item" data-rel="family" onclick="selectRel(this)"><span class="rel-item-emoji">👨‍👩‍👧</span>家族（子ども・両親）</div>
+        <div class="rel-item" data-rel="customer_service" onclick="selectRel(this)"><span class="rel-item-emoji">🏪</span>お客さん（接客業）</div>
+        <div class="rel-item" data-rel="customer_other" onclick="selectRel(this)"><span class="rel-item-emoji">💼</span>お客さん（その他）</div>
+        <div class="rel-item" data-rel="other" onclick="selectRel(this)"><span class="rel-item-emoji">🙂</span>その他</div>
+      </div>
+
+      <hr class="divider">
+
+      <input type="file" id="fileInput" accept="image/*" onchange="onFileSelect(event)">
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">📱</div>
+        <div class="upload-text"><strong>タップしてスクショを選ぶ</strong><br>LINEのトーク画面をそのまま送ってOK</div>
+        <img id="preview" alt="プレビュー">
+      </div>
+
+      <span class="field-label">補足情報（任意）</span>
+      <textarea id="situation" placeholder="例：最近少し冷たい気がする、昨日ちょっと言い合いになった…"></textarea>
+
+      <button class="btn" id="analyzeBtn" onclick="analyze()" disabled>解析する ✨</button>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="card result" id="resultArea">
+      <div class="meters">
+        <div class="meter-card">
+          <div class="meter-label">返信の重要度</div>
+          <div class="meter-ring">
+            <svg width="80" height="80" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="32" fill="none" stroke="#ede9fe" stroke-width="7"/>
+              <circle id="urgencyCircle" cx="40" cy="40" r="32" fill="none" stroke="#7c3aed" stroke-width="7"
+                stroke-dasharray="201" stroke-dashoffset="201" stroke-linecap="round" style="transition:stroke-dashoffset 1s ease;"/>
+            </svg>
+            <div class="meter-num" id="urgencyNum">0</div>
+          </div>
+          <div class="meter-tag" id="urgencyLabel"></div>
+        </div>
+        <div class="meter-card">
+          <div class="meter-label">感情の温度</div>
+          <div class="meter-ring">
+            <svg width="80" height="80" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="32" fill="none" stroke="#ede9fe" stroke-width="7"/>
+              <circle id="tempCircle" cx="40" cy="40" r="32" fill="none" stroke="#a855f7" stroke-width="7"
+                stroke-dasharray="201" stroke-dashoffset="201" stroke-linecap="round" style="transition:stroke-dashoffset 1s ease;"/>
+            </svg>
+            <div class="meter-num" id="tempNum">0</div>
+          </div>
+          <div class="meter-tag" id="tempLabel"></div>
+        </div>
+      </div>
+
+      <div class="summary-wrap" id="summary"></div>
+
+      <div class="section-label">AIの分析（無料）</div>
+      <div class="section-text" id="feeling"></div>
+
+      <div class="paid-section" id="paidSection">
+        <div class="">
+          <div style="margin-top:16px;">
+            <div class="section-label">深層心理の分析</div>
+            <div class="section-text" id="feelingDetail"></div>
+          </div>
+          <div style="margin-top:16px;">
+            <div class="section-label">返信案 3パターン</div>
+            <div class="reply-item"><div class="reply-title" id="reply1title">パターン1</div><div class="reply-body" id="reply1body"></div></div>
+            <div class="reply-item"><div class="reply-title" id="reply2title">パターン2</div><div class="reply-body" id="reply2body"></div></div>
+            <div class="reply-item"><div class="reply-title" id="reply3title">パターン3</div><div class="reply-body" id="reply3body"></div></div>
+          </div>
+          <div style="margin-top:16px;">
+            <div class="section-label">NGな返し方</div>
+            <div class="section-text" id="warning"></div>
+          </div>
+        </div>
+        </div>
+
+      <button class="retry-btn" onclick="reset()">別のスクショを解析する</button>
+    </div>
+  </div>
+
+  <script>
+    let imageBase64 = null;
+    let mediaType = null;
+    let selectedGender = 'female';
+    let selectedRel = 'friend';
+
+    function selectGender(el) {
+      document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      selectedGender = el.dataset.gender;
+    }
+
+    function selectRel(el) {
+      document.querySelectorAll('.rel-item').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      selectedRel = el.dataset.rel;
+    }
+
+    function onFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      mediaType = file.type || 'image/jpeg';
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const dataUrl = ev.target.result;
+        imageBase64 = dataUrl.split(',')[1];
+        document.getElementById('preview').src = dataUrl;
+        document.getElementById('preview').style.display = 'block';
+        document.getElementById('uploadArea').classList.add('has-image');
+        document.getElementById('uploadArea').querySelector('.upload-text').innerHTML = '<strong>画像を変更する</strong>';
+        document.getElementById('analyzeBtn').disabled = false;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function analyze() {
+      if (!imageBase64) return;
+      const btn = document.getElementById('analyzeBtn');
+      const status = document.getElementById('status');
+      btn.disabled = true;
+      status.textContent = '解析中です… ✨';
+      try {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64, mediaType, gender: selectedGender, relationship: selectedRel, situation: document.getElementById('situation').value })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        showResult(data);
+        status.textContent = '';
+      } catch (e) {
+        status.textContent = 'エラー：' + e.message;
+        btn.disabled = false;
+      }
+    }
+
+    function showResult(data) {
+      document.getElementById('formArea').style.display = 'none';
+      document.getElementById('resultArea').style.display = 'block';
+      document.getElementById('urgencyNum').textContent = data.urgency || 0;
+      document.getElementById('urgencyLabel').textContent = data.urgencyLabel || '';
+      document.getElementById('tempNum').textContent = data.temp || 0;
+      document.getElementById('tempLabel').textContent = data.tempLabel || '';
+      document.getElementById('summary').textContent = data.summary || '';
+      document.getElementById('feeling').textContent = data.feeling || '';
+      document.getElementById('feelingDetail').textContent = data.feelingDetail || '';
+
+      const parseReply = (raw) => {
+        const parts = (raw || '').split('｜');
+        return { title: parts[0] || '', body: parts[1] || parts[0] || '' };
+      };
+      const r1 = parseReply(data.reply1);
+      const r2 = parseReply(data.reply2);
+      const r3 = parseReply(data.reply3);
+      document.getElementById('reply1title').textContent = r1.title;
+      document.getElementById('reply1body').textContent = r1.body;
+      document.getElementById('reply2title').textContent = r2.title;
+      document.getElementById('reply2body').textContent = r2.body;
+      document.getElementById('reply3title').textContent = r3.title;
+      document.getElementById('reply3body').textContent = r3.body;
+      document.getElementById('warning').textContent = data.warning || '';
+
+      setTimeout(() => {
+        document.getElementById('urgencyCircle').style.strokeDashoffset = 201 - (201 * (data.urgency || 0) / 100);
+        document.getElementById('tempCircle').style.strokeDashoffset = 201 - (201 * (data.temp || 0) / 100);
+      }, 100);
+    }
+
+    function reset() {
+      imageBase64 = null; mediaType = null;
+      document.getElementById('formArea').style.display = 'block';
+      document.getElementById('resultArea').style.display = 'none';
+      document.getElementById('preview').style.display = 'none';
+      document.getElementById('preview').src = '';
+      document.getElementById('uploadArea').classList.remove('has-image');
+      document.getElementById('uploadArea').querySelector('.upload-text').innerHTML = '<strong>タップしてスクショを選ぶ</strong><br>LINEのトーク画面をそのまま送ってOK';
+      document.getElementById('situation').value = '';
+      document.getElementById('analyzeBtn').disabled = true;
+      document.getElementById('fileInput').value = '';
+      document.getElementById('status').textContent = '';
+    }
+  </script>
+</body>
+</html>
