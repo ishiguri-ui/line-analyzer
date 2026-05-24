@@ -78,7 +78,7 @@
     .section-label { font-size: 11px; font-weight: 600; color: #a78bfa; letter-spacing: 0.08em; margin-bottom: 6px; }
     .section-text { font-size: 14px; line-height: 1.8; color: #333; margin-bottom: 14px; }
     .paid-section { margin-top: 4px; position: relative; }
-    .paid-blur { pointer-events: none; user-select: none; }
+    .paid-blur { user-select: none; }
     .reply-choices { margin-top: 8px; }
     .reply-choice { background: #f5f3ff; border-radius: 10px; padding: 12px; margin-bottom: 8px; border: 2px solid transparent; cursor: pointer; transition: all 0.15s; }
     .reply-choice:hover { border-color: #c4b5fd; }
@@ -352,8 +352,9 @@ function renderAnalyzeScreen() {
   var gender = folder.gender === 'female' ? '女性' : '男性';
   document.getElementById('folderHeader').innerHTML =
     '<div class="folder-header-avatar">' + emoji + '</div>'
-    + '<div><div class="folder-header-name">' + folder.name + '</div>'
-    + '<div class="folder-header-meta">' + relName + ' · ' + gender + (folder.history ? ' · 履歴あり' : '') + '</div></div>';
+    + '<div style="flex:1"><div class="folder-header-name">' + folder.name + '</div>'
+    + '<div class="folder-header-meta">' + relName + ' · ' + gender + (folder.history ? ' · 履歴あり' : '') + '</div></div>'
+    + '<div onclick="editFolder()" style="font-size:13px;color:#7c3aed;cursor:pointer;padding:4px 8px;border:1px solid #c4b5fd;border-radius:8px;">編集</div>';
   var hist = getHistory(folder.id);
   var logEl = document.getElementById('historyLog');
   if (hist.length > 0) {
@@ -474,6 +475,47 @@ function saveChoice() {
   saveHistory(currentFolderId, hist);
   document.getElementById('saveChoiceBtn').textContent = '✓ 保存しました！';
   document.getElementById('saveChoiceBtn').disabled = true;
+}
+
+function editFolder() {
+  var folders = getFolders();
+  var folder = null;
+  for (var i = 0; i < folders.length; i++) { if (folders[i].id === currentFolderId) { folder = folders[i]; break; } }
+  if (!folder) return;
+  document.getElementById('newFolderName').value = folder.name;
+  newFolderGender = folder.gender;
+  newFolderRel = folder.rel;
+  newFolderHistory = folder.history;
+  document.querySelectorAll('#screenNewFolder .gender-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.gender === folder.gender); });
+  document.querySelectorAll('#newRelList .rel-item').forEach(function(b) { b.classList.toggle('active', b.dataset.rel === folder.rel); });
+  if (folder.history) {
+    document.getElementById('newHistoryArea').classList.add('has-file');
+    document.getElementById('newHistoryArea').querySelector('.history-text').innerHTML = '<strong>✓ 履歴あり</strong>';
+  }
+  // 登録ボタンを「更新」に変更
+  document.querySelector('#screenNewFolder .btn-primary').textContent = 'この内容で更新する';
+  document.querySelector('#screenNewFolder .btn-primary').onclick = function() { updateFolder(folder.id); };
+  showScreen('screenNewFolder');
+}
+
+function updateFolder(id) {
+  var name = document.getElementById('newFolderName').value.trim();
+  if (!name) { alert('名前を入力してください'); return; }
+  var folders = getFolders();
+  for (var i = 0; i < folders.length; i++) {
+    if (folders[i].id === id) {
+      folders[i].name = name;
+      folders[i].gender = newFolderGender;
+      folders[i].rel = newFolderRel;
+      if (newFolderHistory) folders[i].history = newFolderHistory;
+      break;
+    }
+  }
+  saveFolders(folders);
+  // ボタンを元に戻す
+  document.querySelector('#screenNewFolder .btn-primary').textContent = 'この相手を登録する';
+  document.querySelector('#screenNewFolder .btn-primary').onclick = createFolder;
+  showScreen('screenAnalyze');
 }
 
 function backToAnalyze() {
