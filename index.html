@@ -354,7 +354,7 @@ function renderAnalyzeScreen() {
     '<div class="folder-header-avatar">' + emoji + '</div>'
     + '<div style="flex:1"><div class="folder-header-name">' + folder.name + '</div>'
     + '<div class="folder-header-meta">' + relName + ' · ' + gender + (folder.history ? ' · 履歴あり' : '') + '</div></div>'
-    + '<div onclick="editFolder()" style="font-size:13px;color:#7c3aed;cursor:pointer;padding:4px 8px;border:1px solid #c4b5fd;border-radius:8px;">編集</div>';
+    + '<div onclick="editFolder()" style="font-size:13px;color:#7c3aed;cursor:pointer;padding:6px 12px;border:1.5px solid #c4b5fd;border-radius:8px;white-space:nowrap;">編集</div>';
   var hist = getHistory(folder.id);
   var logEl = document.getElementById('historyLog');
   if (hist.length > 0) {
@@ -524,6 +524,4 @@ function backToAnalyze() {
 }
 
 renderFolderList();
-</script>
-</body>
-</html>
+</sc
