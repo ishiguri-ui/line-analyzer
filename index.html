@@ -1,1 +1,530 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LINE返信AIアドバイザー</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; background: #f7f3ff; color: #1a1a1a; min-height: 100vh; padding: 0 0 48px; }
+    .container { max-width: 480px; margin: 0 auto; padding: 0 16px; }
+    .header { background: #fff; border-bottom: 1px solid #ede9fe; padding: 14px 16px; display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 10; }
+    .header h1 { font-size: 16px; font-weight: 700; color: #5b21b6; flex: 1; }
+    .header-sub { font-size: 12px; color: #a78bfa; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .folder-list-wrap { padding: 20px 0; }
+    .folder-list-title { font-size: 13px; color: #888; margin-bottom: 12px; }
+    .folder-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(91,33,182,0.06); cursor: pointer; display: flex; align-items: center; gap: 12px; border: 1.5px solid transparent; transition: all 0.15s; }
+    .folder-card:hover { border-color: #c4b5fd; }
+    .folder-avatar { width: 44px; height: 44px; border-radius: 50%; background: #ede9fe; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .folder-info { flex: 1; }
+    .folder-name { font-size: 15px; font-weight: 600; color: #1a1a1a; margin-bottom: 2px; }
+    .folder-meta { font-size: 12px; color: #aaa; }
+    .folder-arrow { font-size: 18px; color: #c4b5fd; }
+    .add-folder-btn { width: 100%; padding: 14px; font-size: 15px; font-weight: 600; background: #7c3aed; color: #fff; border: none; border-radius: 12px; cursor: pointer; margin-top: 8px; }
+    .empty-state { text-align: center; padding: 40px 0; color: #bbb; font-size: 14px; }
+    .form-wrap { padding: 20px 0; }
+    .field-label { font-size: 13px; color: #666; margin-bottom: 8px; display: block; font-weight: 500; }
+    input[type="text"] { width: 100%; padding: 11px 14px; border: 1.5px solid #e5e5e5; border-radius: 10px; font-size: 15px; font-family: inherit; outline: none; transition: border 0.15s; margin-bottom: 16px; }
+    input[type="text"]:focus { border-color: #7c3aed; }
+    .gender-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .gender-btn { padding: 12px; font-size: 14px; text-align: center; border: 1.5px solid #e5e5e5; border-radius: 10px; cursor: pointer; background: #fff; color: #555; transition: all 0.15s; }
+    .gender-btn.active { border-color: #7c3aed; background: #f5f3ff; color: #5b21b6; font-weight: 600; }
+    .gender-emoji { display: block; font-size: 22px; margin-bottom: 4px; }
+    .rel-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .rel-item { padding: 11px 14px; font-size: 14px; border: 1.5px solid #e5e5e5; border-radius: 10px; cursor: pointer; background: #fff; color: #555; transition: all 0.15s; display: flex; align-items: center; gap: 10px; }
+    .rel-item.active { border-color: #7c3aed; background: #f5f3ff; color: #5b21b6; font-weight: 600; }
+    .rel-item-emoji { font-size: 18px; }
+    .history-area { border: 2px dashed #c4b5fd; border-radius: 12px; padding: 16px; text-align: center; cursor: pointer; margin-bottom: 16px; transition: background 0.15s; }
+    .history-area:hover { background: #f5f3ff; }
+    .history-area.has-file { border-color: #7c3aed; background: #f5f3ff; }
+    .history-icon { font-size: 24px; margin-bottom: 4px; }
+    .history-text { font-size: 13px; color: #888; }
+    .history-text strong { color: #7c3aed; }
+    .history-note { font-size: 11px; color: #aaa; margin-top: 4px; }
+    .btn-primary { width: 100%; padding: 14px; font-size: 15px; font-weight: 700; background: #7c3aed; color: #fff; border: none; border-radius: 12px; cursor: pointer; margin-top: 4px; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-secondary { width: 100%; padding: 11px; font-size: 14px; font-weight: 600; background: #fff; color: #7c3aed; border: 1.5px solid #c4b5fd; border-radius: 10px; cursor: pointer; margin-top: 8px; }
+    .divider { border: none; border-top: 1px solid #f0eafe; margin: 16px 0; }
+    .folder-header { background: #fff; border-radius: 14px; padding: 14px 16px; margin: 16px 0 14px; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 8px rgba(91,33,182,0.06); }
+    .folder-header-avatar { width: 38px; height: 38px; border-radius: 50%; background: #ede9fe; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .folder-header-name { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+    .folder-header-meta { font-size: 12px; color: #aaa; }
+    .upload-area { border: 2px dashed #c4b5fd; border-radius: 12px; padding: 24px 16px; text-align: center; cursor: pointer; transition: background 0.15s; margin-bottom: 14px; }
+    .upload-area:hover { background: #f5f3ff; }
+    .upload-area.has-image { border-color: #7c3aed; background: #f5f3ff; }
+    .upload-icon { font-size: 32px; margin-bottom: 6px; }
+    .upload-text { font-size: 13px; color: #888; }
+    .upload-text strong { color: #7c3aed; }
+    #preview { max-width: 100%; border-radius: 8px; margin-top: 10px; display: none; }
+    textarea { width: 100%; padding: 10px 12px; border: 1.5px solid #e5e5e5; border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical; min-height: 64px; outline: none; transition: border 0.15s; margin-bottom: 14px; }
+    textarea:focus { border-color: #7c3aed; }
+    .status { text-align: center; font-size: 13px; color: #7c3aed; margin-top: 10px; min-height: 18px; }
+    .history-log { margin-top: 8px; }
+    .history-log-title { font-size: 12px; color: #aaa; margin-bottom: 8px; }
+    .history-log-item { background: #fff; border-radius: 10px; padding: 10px 12px; margin-bottom: 6px; font-size: 12px; color: #666; border: 1px solid #f0eafe; }
+    .history-log-date { font-size: 11px; color: #bbb; margin-bottom: 4px; }
+    .history-log-choice { font-size: 12px; color: #7c3aed; font-weight: 600; margin-top: 4px; }
+    .result-wrap { padding-bottom: 24px; }
+    .meters { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .meter-card { background: #f5f3ff; border-radius: 12px; padding: 14px; text-align: center; }
+    .meter-label { font-size: 11px; color: #7c3aed; font-weight: 600; margin-bottom: 8px; }
+    .meter-ring { position: relative; width: 80px; height: 80px; margin: 0 auto 8px; }
+    .meter-ring svg { transform: rotate(-90deg); }
+    .meter-num { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 22px; font-weight: 700; color: #5b21b6; }
+    .meter-tag { font-size: 12px; font-weight: 600; color: #5b21b6; }
+    .summary-wrap { text-align: center; margin-bottom: 16px; font-size: 13px; color: #888; }
+    .section-label { font-size: 11px; font-weight: 600; color: #a78bfa; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .section-text { font-size: 14px; line-height: 1.8; color: #333; margin-bottom: 14px; }
+    .paid-section { margin-top: 4px; position: relative; }
+    .paid-blur { filter: blur(5px); user-select: none; }
+    .reply-choices { margin-top: 8px; }
+    .reply-choice { background: #f5f3ff; border-radius: 10px; padding: 12px; margin-bottom: 8px; border: 2px solid transparent; cursor: pointer; transition: all 0.15s; }
+    .reply-choice:hover { border-color: #c4b5fd; }
+    .reply-choice.selected { border-color: #7c3aed; background: #ede9fe; }
+    .reply-choice-title { font-size: 11px; color: #7c3aed; font-weight: 600; margin-bottom: 6px; }
+    .reply-choice-body { font-size: 14px; line-height: 1.7; color: #333; }
+    .paid-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.78); border-radius: 12px; }
+    .paid-overlay p { font-size: 14px; font-weight: 600; color: #5b21b6; margin-bottom: 12px; text-align: center; line-height: 1.6; }
+    .paid-btn { padding: 11px 28px; font-size: 14px; font-weight: 700; background: #7c3aed; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+    .save-choice-btn { width: 100%; padding: 12px; font-size: 14px; font-weight: 700; background: #5b21b6; color: #fff; border: none; border-radius: 10px; cursor: pointer; margin-top: 12px; display: none; }
+    input[type="file"] { display: none; }
+    .badge-new { font-size: 10px; background: #7c3aed; color: #fff; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>💬 LINE返信AI</h1>
+  <span class="header-sub" id="headerSub">相手を選んでください</span>
+</div>
+
+<div class="screen active" id="screenFolders">
+  <div class="container">
+    <div class="folder-list-wrap">
+      <div class="folder-list-title">相手一覧</div>
+      <div id="folderList"></div>
+      <button class="add-folder-btn" onclick="showScreen('screenNewFolder')">＋ 新しい相手を追加</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="screenNewFolder">
+  <div class="container">
+    <div class="form-wrap">
+      <span class="field-label">相手の名前（ニックネームOK）</span>
+      <input type="text" id="newFolderName" placeholder="例：田中さん、あの子">
+
+      <span class="field-label">相手の性別</span>
+      <div class="gender-grid">
+        <div class="gender-btn active" data-gender="female" onclick="selectNewGender(this)"><span class="gender-emoji">👩</span>女性</div>
+        <div class="gender-btn" data-gender="male" onclick="selectNewGender(this)"><span class="gender-emoji">👨</span>男性</div>
+      </div>
+
+      <span class="field-label">相手との関係</span>
+      <div class="rel-list" id="newRelList">
+        <div class="rel-item active" data-rel="friend" onclick="selectNewRel(this)"><span class="rel-item-emoji">👫</span>友達</div>
+        <div class="rel-item" data-rel="crush" onclick="selectNewRel(this)"><span class="rel-item-emoji">💘</span>恋愛関係（付き合う前）</div>
+        <div class="rel-item" data-rel="lover" onclick="selectNewRel(this)"><span class="rel-item-emoji">💑</span>恋愛関係（恋人）</div>
+        <div class="rel-item" data-rel="couple" onclick="selectNewRel(this)"><span class="rel-item-emoji">💍</span>家族（夫婦）</div>
+        <div class="rel-item" data-rel="family" onclick="selectNewRel(this)"><span class="rel-item-emoji">👨‍👩‍👧</span>家族（子ども・両親）</div>
+        <div class="rel-item" data-rel="night_customer" onclick="selectNewRel(this)"><span class="rel-item-emoji">🥂</span>お客様（飲食店）</div>
+        <div class="rel-item" data-rel="night_staff" onclick="selectNewRel(this)"><span class="rel-item-emoji">💃</span>飲み友達</div>
+        <div class="rel-item" data-rel="other" onclick="selectNewRel(this)"><span class="rel-item-emoji">🙂</span>その他</div>
+      </div>
+
+      <span class="field-label">過去のトーク履歴（任意）<span class="badge-new">NEW</span></span>
+      <input type="file" id="newHistoryInput" accept=".txt" onchange="onNewHistorySelect(event)">
+      <div class="history-area" id="newHistoryArea" onclick="document.getElementById('newHistoryInput').click()">
+        <div class="history-icon">📄</div>
+        <div class="history-text"><strong>トーク履歴の .txt を選ぶ</strong></div>
+        <div class="history-note">LINEアプリ → トーク → 右上メニュー → トーク履歴を送信 → テキスト形式</div>
+      </div>
+
+      <button class="btn-primary" onclick="createFolder()">この相手を登録する</button>
+      <button class="btn-secondary" onclick="showScreen('screenFolders')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="screenAnalyze">
+  <div class="container">
+    <div class="folder-header" id="folderHeader"></div>
+    <span class="field-label">今回のスクショ</span>
+    <input type="file" id="fileInput" accept="image/*" onchange="onFileSelect(event)">
+    <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-icon">📱</div>
+      <div class="upload-text"><strong>タップしてスクショを選ぶ</strong></div>
+      <img id="preview" alt="プレビュー">
+    </div>
+    <span class="field-label">補足情報（任意）</span>
+    <textarea id="situation" placeholder="例：最近少し冷たい気がする…"></textarea>
+    <button class="btn-primary" id="analyzeBtn" onclick="analyze()" disabled>解析する ✨</button>
+    <div class="status" id="status"></div>
+    <div class="history-log" id="historyLog"></div>
+    <button class="btn-secondary" style="margin-top:16px;" onclick="showScreen('screenFolders')">← 相手一覧に戻る</button>
+  </div>
+</div>
+
+<div class="screen" id="screenResult">
+  <div class="container">
+    <div class="result-wrap">
+      <div class="meters">
+        <div class="meter-card">
+          <div class="meter-label">返信の重要度</div>
+          <div class="meter-ring">
+            <svg width="80" height="80" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="32" fill="none" stroke="#ede9fe" stroke-width="7"/>
+              <circle id="urgencyCircle" cx="40" cy="40" r="32" fill="none" stroke="#7c3aed" stroke-width="7" stroke-dasharray="201" stroke-dashoffset="201" stroke-linecap="round" style="transition:stroke-dashoffset 1s ease;"/>
+            </svg>
+            <div class="meter-num" id="urgencyNum">0</div>
+          </div>
+          <div class="meter-tag" id="urgencyLabel"></div>
+        </div>
+        <div class="meter-card">
+          <div class="meter-label">感情の温度</div>
+          <div class="meter-ring">
+            <svg width="80" height="80" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="32" fill="none" stroke="#ede9fe" stroke-width="7"/>
+              <circle id="tempCircle" cx="40" cy="40" r="32" fill="none" stroke="#a855f7" stroke-width="7" stroke-dasharray="201" stroke-dashoffset="201" stroke-linecap="round" style="transition:stroke-dashoffset 1s ease;"/>
+            </svg>
+            <div class="meter-num" id="tempNum">0</div>
+          </div>
+          <div class="meter-tag" id="tempLabel"></div>
+        </div>
+      </div>
+      <div class="summary-wrap" id="summary"></div>
+      <div class="section-label">AIの分析（無料）</div>
+      <div class="section-text" id="feeling"></div>
+      <div class="paid-section" id="paidSection">
+        <div class="paid-blur" id="paidBlur">
+          <div class="section-label">深層心理の分析</div>
+          <div class="section-text" id="feelingDetail"></div>
+          <div class="section-label">返信案 3パターン（タップして選択）</div>
+          <div class="reply-choices">
+            <div class="reply-choice" id="choice0" onclick="selectChoice(0)">
+              <div class="reply-choice-title" id="reply1title"></div>
+              <div class="reply-choice-body" id="reply1body"></div>
+            </div>
+            <div class="reply-choice" id="choice1" onclick="selectChoice(1)">
+              <div class="reply-choice-title" id="reply2title"></div>
+              <div class="reply-choice-body" id="reply2body"></div>
+            </div>
+            <div class="reply-choice" id="choice2" onclick="selectChoice(2)">
+              <div class="reply-choice-title" id="reply3title"></div>
+              <div class="reply-choice-body" id="reply3body"></div>
+            </div>
+          </div>
+          <button class="save-choice-btn" id="saveChoiceBtn" onclick="saveChoice()">この返信を使った ✓</button>
+          <div class="section-label" style="margin-top:14px;">NGな返し方</div>
+          <div class="section-text" id="warning"></div>
+        </div>
+        <div class="paid-overlay" id="paidOverlay">
+          <p>返信案3パターンを見るには<br>月額980円のプランへ</p>
+          <button class="paid-btn" onclick="alert('決済機能は準備中です！')">続きを見る 👑</button>
+        </div>
+      </div>
+      <button class="btn-secondary" style="margin-top:16px;" onclick="backToAnalyze()">← 別のスクショを解析する</button>
+      <button class="btn-secondary" style="margin-top:8px;" onclick="showScreen('screenFolders')">相手一覧に戻る</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var currentFolderId = null;
+var currentResult = null;
+var selectedChoiceIndex = null;
+var newFolderGender = 'female';
+var newFolderRel = 'friend';
+var newFolderHistory = null;
+var imageBase64 = null;
+var mediaType = null;
+
+var REL_NAMES = {
+  friend: '友達',
+  crush: '恋愛（付き合う前）',
+  lover: '恋愛（恋人）',
+  couple: '家族（夫婦）',
+  family: '家族（子ども・両親）',
+  night_customer: 'お客様（飲食店）',
+  night_staff: '飲み友達',
+  other: 'その他'
+};
+
+var REL_EMOJI = {
+  friend: '👫', crush: '💘', lover: '💑', couple: '💍', family: '👨‍👩‍👧',
+  night_customer: '🥂', night_staff: '💃', other: '🙂'
+};
+
+function getFolders() { return JSON.parse(localStorage.getItem('line_folders') || '[]'); }
+function saveFolders(f) { localStorage.setItem('line_folders', JSON.stringify(f)); }
+function getHistory(fid) { return JSON.parse(localStorage.getItem('line_history_' + fid) || '[]'); }
+function saveHistory(fid, h) { localStorage.setItem('line_history_' + fid, JSON.stringify(h)); }
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  if (id === 'screenFolders') renderFolderList();
+  if (id === 'screenAnalyze') renderAnalyzeScreen();
+}
+
+function renderFolderList() {
+  var folders = getFolders();
+  var list = document.getElementById('folderList');
+  if (folders.length === 0) {
+    list.innerHTML = '<div class="empty-state">まだ相手が登録されていません<br>追加から始めましょう</div>';
+    return;
+  }
+  list.innerHTML = folders.map(function(f) {
+    var hist = getHistory(f.id);
+    var lastDate = hist.length ? new Date(hist[hist.length-1].date).toLocaleDateString('ja-JP') : '未使用';
+    var emoji = REL_EMOJI[f.rel] || '🙂';
+    var relName = REL_NAMES[f.rel] || 'その他';
+    var gender = f.gender === 'female' ? '女性' : '男性';
+    return '<div class="folder-card" onclick="openFolder(\'' + f.id + '\')">'
+      + '<div class="folder-avatar">' + emoji + '</div>'
+      + '<div class="folder-info">'
+      + '<div class="folder-name">' + f.name + '</div>'
+      + '<div class="folder-meta">' + relName + ' · ' + gender + ' · 最終: ' + lastDate + '</div>'
+      + '</div>'
+      + '<div class="folder-arrow">›</div>'
+      + '</div>';
+  }).join('');
+}
+
+function selectNewGender(el) {
+  document.querySelectorAll('#screenNewFolder .gender-btn').forEach(function(b) { b.classList.remove('active'); });
+  el.classList.add('active');
+  newFolderGender = el.dataset.gender;
+}
+
+function selectNewRel(el) {
+  document.querySelectorAll('#newRelList .rel-item').forEach(function(b) { b.classList.remove('active'); });
+  el.classList.add('active');
+  newFolderRel = el.dataset.rel;
+}
+
+function onNewHistorySelect(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    newFolderHistory = ev.target.result;
+    document.getElementById('newHistoryArea').classList.add('has-file');
+    document.getElementById('newHistoryArea').querySelector('.history-text').innerHTML = '<strong>✓ ' + file.name + '</strong>';
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function createFolder() {
+  var name = document.getElementById('newFolderName').value.trim();
+  if (!name) { alert('名前を入力してください'); return; }
+  var folders = getFolders();
+  var id = 'f_' + Date.now();
+  folders.push({ id: id, name: name, gender: newFolderGender, rel: newFolderRel, history: newFolderHistory || null, createdAt: new Date().toISOString() });
+  saveFolders(folders);
+  document.getElementById('newFolderName').value = '';
+  newFolderGender = 'female'; newFolderRel = 'friend'; newFolderHistory = null;
+  document.querySelectorAll('#screenNewFolder .gender-btn').forEach(function(b, i) { b.classList.toggle('active', i === 0); });
+  document.querySelectorAll('#newRelList .rel-item').forEach(function(b, i) { b.classList.toggle('active', i === 0); });
+  var ha = document.getElementById('newHistoryArea');
+  ha.classList.remove('has-file');
+  ha.querySelector('.history-text').innerHTML = '<strong>トーク履歴の .txt を選ぶ</strong>';
+  currentFolderId = id;
+  showScreen('screenAnalyze');
+}
+
+function openFolder(id) {
+  currentFolderId = id;
+  imageBase64 = null; mediaType = null;
+  showScreen('screenAnalyze');
+}
+
+function renderAnalyzeScreen() {
+  var folders = getFolders();
+  var folder = null;
+  for (var i = 0; i < folders.length; i++) { if (folders[i].id === currentFolderId) { folder = folders[i]; break; } }
+  if (!folder) return;
+  document.getElementById('headerSub').textContent = folder.name;
+  var emoji = REL_EMOJI[folder.rel] || '🙂';
+  var relName = REL_NAMES[folder.rel] || 'その他';
+  var gender = folder.gender === 'female' ? '女性' : '男性';
+  document.getElementById('folderHeader').innerHTML =
+    '<div class="folder-header-avatar">' + emoji + '</div>'
+    + '<div style="flex:1"><div class="folder-header-name">' + folder.name + '</div>'
+    + '<div class="folder-header-meta">' + relName + ' · ' + gender + (folder.history ? ' · 履歴あり' : '') + '</div></div>'
+    + '<div onclick="editFolder()" style="font-size:13px;color:#7c3aed;cursor:pointer;padding:6px 12px;border:1.5px solid #c4b5fd;border-radius:8px;white-space:nowrap;">編集</div>';
+  var hist = getHistory(folder.id);
+  var logEl = document.getElementById('historyLog');
+  if (hist.length > 0) {
+    var recent = hist.slice(-3).reverse();
+    logEl.innerHTML = '<div class="history-log-title">過去の相談（最新3件）</div>'
+      + recent.map(function(h) {
+        return '<div class="history-log-item">'
+          + '<div class="history-log-date">' + new Date(h.date).toLocaleDateString('ja-JP') + '</div>'
+          + '<div>' + (h.summary || '（要約なし）') + '</div>'
+          + (h.chosenReply ? '<div class="history-log-choice">✓ 使った返信：' + h.chosenReply + '</div>' : '')
+          + '</div>';
+      }).join('');
+  } else { logEl.innerHTML = ''; }
+  document.getElementById('preview').style.display = 'none';
+  document.getElementById('preview').src = '';
+  document.getElementById('uploadArea').classList.remove('has-image');
+  document.getElementById('uploadArea').querySelector('.upload-text').innerHTML = '<strong>タップしてスクショを選ぶ</strong>';
+  document.getElementById('fileInput').value = '';
+  document.getElementById('situation').value = '';
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('status').textContent = '';
+}
+
+function onFileSelect(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  mediaType = file.type || 'image/jpeg';
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    imageBase64 = ev.target.result.split(',')[1];
+    document.getElementById('preview').src = ev.target.result;
+    document.getElementById('preview').style.display = 'block';
+    document.getElementById('uploadArea').classList.add('has-image');
+    document.getElementById('uploadArea').querySelector('.upload-text').innerHTML = '<strong>画像を変更する</strong>';
+    document.getElementById('analyzeBtn').disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+function analyze() {
+  if (!imageBase64) return;
+  var folders = getFolders();
+  var folder = null;
+  for (var i = 0; i < folders.length; i++) { if (folders[i].id === currentFolderId) { folder = folders[i]; break; } }
+  var btn = document.getElementById('analyzeBtn');
+  var status = document.getElementById('status');
+  btn.disabled = true;
+  status.textContent = '解析中です… ✨';
+  var hist = getHistory(folder.id);
+  var choiceHistory = hist.filter(function(h) { return h.chosenReply; }).slice(-5)
+    .map(function(h) { return '・' + h.summary + '→「' + h.chosenReply + '」を選択'; }).join('\n');
+
+  fetch('/api/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      imageBase64: imageBase64, mediaType: mediaType,
+      gender: folder.gender, relationship: folder.rel,
+      situation: document.getElementById('situation').value,
+      chatHistory: folder.history || null,
+      choiceHistory: choiceHistory || null
+    })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.error) { throw new Error(data.error); }
+    currentResult = data;
+    selectedChoiceIndex = null;
+    showResult(data);
+    status.textContent = '';
+  })
+  .catch(function(e) {
+    status.textContent = 'エラー：' + e.message;
+    btn.disabled = false;
+  });
+}
+
+function showResult(data) {
+  showScreen('screenResult');
+  document.getElementById('urgencyNum').textContent = data.urgency || 0;
+  document.getElementById('urgencyLabel').textContent = data.urgencyLabel || '';
+  document.getElementById('tempNum').textContent = data.temp || 0;
+  document.getElementById('tempLabel').textContent = data.tempLabel || '';
+  document.getElementById('summary').textContent = data.summary || '';
+  document.getElementById('feeling').textContent = data.feeling || '';
+  document.getElementById('feelingDetail').textContent = data.feelingDetail || '';
+  function parseReply(r) { var p = (r || '').split('｜'); return { title: p[0] || '', body: p[1] || p[0] || '' }; }
+  var r1 = parseReply(data.reply1), r2 = parseReply(data.reply2), r3 = parseReply(data.reply3);
+  document.getElementById('reply1title').textContent = r1.title;
+  document.getElementById('reply1body').textContent = r1.body;
+  document.getElementById('reply2title').textContent = r2.title;
+  document.getElementById('reply2body').textContent = r2.body;
+  document.getElementById('reply3title').textContent = r3.title;
+  document.getElementById('reply3body').textContent = r3.body;
+  document.getElementById('warning').textContent = data.warning || '';
+  document.querySelectorAll('.reply-choice').forEach(function(c) { c.classList.remove('selected'); });
+  document.getElementById('saveChoiceBtn').style.display = 'none';
+  document.getElementById('saveChoiceBtn').disabled = false;
+  document.getElementById('saveChoiceBtn').textContent = 'この返信を使った ✓';
+  setTimeout(function() {
+    document.getElementById('urgencyCircle').style.strokeDashoffset = 201 - (201 * (data.urgency || 0) / 100);
+    document.getElementById('tempCircle').style.strokeDashoffset = 201 - (201 * (data.temp || 0) / 100);
+  }, 100);
+}
+
+function selectChoice(idx) {
+  selectedChoiceIndex = idx;
+  document.querySelectorAll('.reply-choice').forEach(function(c, i) { c.classList.toggle('selected', i === idx); });
+  document.getElementById('saveChoiceBtn').style.display = 'block';
+}
+
+function saveChoice() {
+  if (selectedChoiceIndex === null || !currentResult) return;
+  var replies = [currentResult.reply1, currentResult.reply2, currentResult.reply3];
+  var chosen = (replies[selectedChoiceIndex] || '').split('｜')[0];
+  var hist = getHistory(currentFolderId);
+  hist.push({ date: new Date().toISOString(), summary: currentResult.summary || '', chosenReply: chosen });
+  saveHistory(currentFolderId, hist);
+  document.getElementById('saveChoiceBtn').textContent = '✓ 保存しました！';
+  document.getElementById('saveChoiceBtn').disabled = true;
+}
+
+function editFolder() {
+  var folders = getFolders();
+  var folder = null;
+  for (var i = 0; i < folders.length; i++) { if (folders[i].id === currentFolderId) { folder = folders[i]; break; } }
+  if (!folder) return;
+  document.getElementById('newFolderName').value = folder.name;
+  newFolderGender = folder.gender;
+  newFolderRel = folder.rel;
+  newFolderHistory = folder.history;
+  document.querySelectorAll('#screenNewFolder .gender-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.gender === folder.gender); });
+  document.querySelectorAll('#newRelList .rel-item').forEach(function(b) { b.classList.toggle('active', b.dataset.rel === folder.rel); });
+  if (folder.history) {
+    document.getElementById('newHistoryArea').classList.add('has-file');
+    document.getElementById('newHistoryArea').querySelector('.history-text').innerHTML = '<strong>✓ 履歴あり</strong>';
+  }
+  // 登録ボタンを「更新」に変更
+  document.querySelector('#screenNewFolder .btn-primary').textContent = 'この内容で更新する';
+  document.querySelector('#screenNewFolder .btn-primary').onclick = function() { updateFolder(folder.id); };
+  showScreen('screenNewFolder');
+}
+
+function updateFolder(id) {
+  var name = document.getElementById('newFolderName').value.trim();
+  if (!name) { alert('名前を入力してください'); return; }
+  var folders = getFolders();
+  for (var i = 0; i < folders.length; i++) {
+    if (folders[i].id === id) {
+      folders[i].name = name;
+      folders[i].gender = newFolderGender;
+      folders[i].rel = newFolderRel;
+      if (newFolderHistory) folders[i].history = newFolderHistory;
+      break;
+    }
+  }
+  saveFolders(folders);
+  // ボタンを元に戻す
+  document.querySelector('#screenNewFolder .btn-primary').textContent = 'この相手を登録する';
+  document.querySelector('#screenNewFolder .btn-primary').onclick = createFolder;
+  showScreen('screenAnalyze');
+}
+
+function backToAnalyze() {
+  imageBase64 = null; mediaType = null;
+  showScreen('screenAnalyze');
+}
+
+renderFolderList();
+</script>
+</body>
+</html>
 
