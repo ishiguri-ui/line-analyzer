@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LINEトキメキ解析AI｜あの人の本音、教えます</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; background: #fff0f5; color: #1a1a1a; min-height: 100vh; padding: 24px 16px 48px; }
+    .container { max-width: 480px; margin: 0 auto; }
+
+    .hero { text-align: center; margin-bottom: 28px; }
+    .hero-emoji { font-size: 48px; margin-bottom: 8px; }
+    .hero h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; color: #c2185b; }
+    .hero p { font-size: 14px; color: #888; line-height: 1.6; }
+
+    .card { background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 12px rgba(194,24,91,0.07); }
+
+    .upload-area { border: 2px dashed #f48fb1; border-radius: 12px; padding: 32px 16px; text-align: center; cursor: pointer; transition: background 0.15s; margin-bottom: 16px; }
+    .upload-area:hover { background: #fff0f5; }
+    .upload-area.has-image { border-color: #c2185b; background: #fff0f5; }
+    .upload-icon { font-size: 36px; margin-bottom: 8px; }
+    .upload-text { font-size: 14px; color: #888; }
+    .upload-text strong { color: #c2185b; }
+    #preview { max-width: 100%; border-radius: 8px; margin-top: 12px; display: none; }
+
+    label { font-size: 13px; color: #888; display: block; margin-bottom: 6px; }
+    textarea { width: 100%; padding: 10px 12px; border: 1px solid #f48fb1; border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical; min-height: 72px; outline: none; }
+    textarea:focus { border-color: #c2185b; }
+
+    .btn { width: 100%; padding: 14px; font-size: 16px; font-weight: 700; background: linear-gradient(135deg, #e91e8c, #c2185b); color: #fff; border: none; border-radius: 12px; cursor: pointer; margin-top: 4px; letter-spacing: 0.03em; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .status { text-align: center; font-size: 13px; color: #c2185b; margin-top: 12px; min-height: 20px; }
+
+    .result { display: none; }
+
+    .score-area { text-align: center; padding: 24px 0 16px; }
+    .score-ring { position: relative; width: 120px; height: 120px; margin: 0 auto 12px; }
+    .score-ring svg { transform: rotate(-90deg); }
+    .score-num { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 700; color: #c2185b; }
+    .score-label { font-size: 15px; font-weight: 600; color: #c2185b; }
+    .summary { font-size: 13px; color: #888; margin-top: 4px; }
+
+    .free-section { margin-top: 16px; }
+    .section-label { font-size: 11px; font-weight: 600; color: #f48fb1; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .section-text { font-size: 14px; line-height: 1.8; color: #333; }
+
+    .paid-section { margin-top: 20px; position: relative; }
+    .paid-blur { filter: blur(4px); pointer-events: none; user-select: none; }
+    .paid-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.7); border-radius: 12px; }
+    .paid-overlay p { font-size: 14px; font-weight: 600; color: #c2185b; margin-bottom: 10px; text-align: center; }
+    .paid-btn { padding: 10px 24px; font-size: 14px; font-weight: 700; background: #c2185b; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+    .paid-item { margin-bottom: 14px; }
+
+    .retry-btn { width: 100%; padding: 11px; font-size: 14px; font-weight: 600; background: #fff; color: #c2185b; border: 1.5px solid #f48fb1; border-radius: 10px; cursor: pointer; margin-top: 12px; }
+
+    input[type="file"] { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <div class="hero-emoji">💌</div>
+      <h1>LINEトキメキ解析AI</h1>
+      <p>スクショを送るだけ。<br>あの人の本音と次の一手を教えます。</p>
+    </div>
+
+    <div class="card" id="formArea">
+      <input type="file" id="fileInput" accept="image/*" onchange="onFileSelect(event)">
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">📱</div>
+        <div class="upload-text"><strong>タップしてスクショを選ぶ</strong><br>LINEのトーク画面をそのまま送ってOK</div>
+        <img id="preview" alt="プレビュー">
+      </div>
+
+      <label>補足情報（任意）</label>
+      <textarea id="situation" placeholder="例：付き合って3ヶ月、最近返信が遅くなった気がする…"></textarea>
+
+      <button class="btn" id="analyzeBtn" onclick="analyze()" disabled>解析する 💓</button>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="card result" id="resultArea">
+      <div class="score-area">
+        <div class="score-ring">
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#ffe0eb" stroke-width="10"/>
+            <circle id="scoreCircle" cx="60" cy="60" r="50" fill="none" stroke="#c2185b" stroke-width="10"
+              stroke-dasharray="314" stroke-dashoffset="314" stroke-linecap="round" style="transition: stroke-dashoffset 1s ease;"/>
+          </svg>
+          <div class="score-num" id="scoreNum">0</div>
+        </div>
+        <div class="score-label" id="scoreLabel"></div>
+        <div class="summary" id="summary"></div>
+      </div>
+
+      <div class="free-section">
+        <div class="section-label">AIの分析（無料）</div>
+        <div class="section-text" id="feeling"></div>
+      </div>
+
+      <div class="paid-section" id="paidSection">
+        <div class="paid-blur">
+          <div class="paid-item">
+            <div class="section-label">深層心理の分析</div>
+            <div class="section-text" id="feelingDetail"></div>
+          </div>
+          <div class="paid-item">
+            <div class="section-label">次に送るべきメッセージ</div>
+            <div class="section-text" id="nextMessage"></div>
+          </div>
+          <div class="paid-item">
+            <div class="section-label">注意すべきポイント</div>
+            <div class="section-text" id="warning"></div>
+          </div>
+        </div>
+        <div class="paid-overlay">
+          <p>続きを見るには<br>月額980円のプランへ</p>
+          <button class="paid-btn" onclick="alert('決済機能は準備中です！')">続きを見る 👑</button>
+        </div>
+      </div>
+
+      <button class="retry-btn" onclick="reset()">別のスクショを解析する</button>
+    </div>
+  </div>
+
+  <script>
+    let imageBase64 = null;
+    let mediaType = null;
+
+    function onFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      mediaType = file.type || 'image/jpeg';
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const dataUrl = ev.target.result;
+        imageBase64 = dataUrl.split(',')[1];
+        const preview = document.getElementById('preview');
+        preview.src = dataUrl;
+        preview.style.display = 'block';
+        document.getElementById('uploadArea').classList.add('has-image');
+        document.getElementById('uploadArea').querySelector('.upload-text').innerHTML = '<strong>画像を変更する</strong>';
+        document.getElementById('analyzeBtn').disabled = false;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function analyze() {
+      if (!imageBase64) return;
+      const btn = document.getElementById('analyzeBtn');
+      const status = document.getElementById('status');
+      btn.disabled = true;
+      status.textContent = '解析中です… 💓';
+
+      try {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageBase64,
+            mediaType,
+            situation: document.getElementById('situation').value
+          })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        showResult(data);
+        status.textContent = '';
+      } catch (e) {
+        status.textContent = 'エラー：' + e.message;
+        btn.disabled = false;
+      }
+    }
+
+    function showResult(data) {
+      document.getElementById('formArea').style.display = 'none';
+      const result = document.getElementById('resultArea');
+      result.style.display = 'block';
+
+      const score = data.score || 0;
+      document.getElementById('scoreNum').textContent = score;
+      document.getElementById('scoreLabel').textContent = data.scoreLabel || '';
+      document.getElementById('summary').textContent = data.summary || '';
+      document.getElementById('feeling').textContent = data.feeling || '';
+      document.getElementById('feelingDetail').textContent = data.feelingDetail || '';
+      document.getElementById('nextMessage').textContent = data.nextMessage || '';
+      document.getElementById('warning').textContent = data.warning || '';
+
+      setTimeout(() => {
+        const offset = 314 - (314 * score / 100);
+        document.getElementById('scoreCircle').style.strokeDashoffset = offset;
+      }, 100);
+    }
+
+    function reset() {
+      imageBase64 = null;
+      mediaType = null;
+      document.getElementById('formArea').style.display = 'block';
+      document.getElementById('resultArea').style.display = 'none';
+      document.getElementById('preview').style.display = 'none';
+      document.getElementById('preview').src = '';
+      document.getElementById('uploadArea').classList.remove('has-image');
+      document.getElementById('uploadArea').querySelector('.upload-text').innerHTML = '<strong>タップしてスクショを選ぶ</strong><br>LINEのトーク画面をそのまま送ってOK';
+      document.getElementById('situation').value = '';
+      document.getElementById('analyzeBtn').disabled = true;
+      document.getElementById('fileInput').value = '';
+      document.getElementById('status').textContent = '';
+    }
+  </script>
+</body>
+</html>
